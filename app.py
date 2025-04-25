@@ -167,25 +167,28 @@ El análisis se realiza en tres etapas principales, considerando solo los segmen
 Esta simulación te permite entender cómo cambia la distribución de fuerzas y torques en diferentes progresiones de movimientos de calistenia según qué segmentos incluyas y sus ángulos específicos.
 """)
 
+# Reemplaza la sección de animación existente con este código mejorado
 # ----------------------------
-# Lógica para la animación del stickman 
+# Lógica para la animación anatómica del stickman
 # ----------------------------
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import matplotlib.patches as patches
 import tempfile
+import numpy as np
+
 
 def animate(frame, ejercicio, progresion, distances, angles, ax):
     ax.clear()
     frac = min(1.0, frame / (frames - 1) * 2)  # Aceleramos la animación
     L_t, L_p, L_b = distances
-    
-    # Usamos los ángulos originales para cálculos
-    angulo_t_original = angles[0]
-    angulo_p_original = angles[1]
-    angulo_b_original = angles[2]
-    
-    # Para la animación, definimos ángulos visuales específicos sin modificar los originales
-    # Estos ángulos son solo para la visualización y no afectan los cálculos
+
+    # Colores anatómicos
+    color_piel = '#FFD39B'  # Color para la piel
+    color_tronco = '#104E8B'  # Azul para el tronco/torso
+    color_piernas = '#8B4513'  # Marrón para las piernas
+    color_brazo = '#CD5C5C'  # Rojo para el brazo
+
     if ejercicio == "Front Lever":
         # ÁNGULOS VISUALES para Front Lever
         if progresion == "Tuck Front Lever":
@@ -203,89 +206,199 @@ def animate(frame, ejercicio, progresion, distances, angles, ax):
             angulo_t_visual = np.radians(0)  # Tronco horizontal
             angulo_p_visual = np.radians(0)  # Piernas extendidas alineadas con tronco
             angulo_b_visual = np.radians(90)  # Brazos verticales
-            
+
         # Interpolación para animar gradualmente el Front Lever
         θ_t = frac * angulo_t_visual
         θ_p = frac * angulo_p_visual
         θ_b = frac * angulo_b_visual
-    
-    # VISUALIZACIÓN del Front Lever
-    if ejercicio == "Front Lever":
+
         # Front Lever: punto de agarre en la barra (arriba)
         # La barra estará en la parte superior
         barra_y = 0.8
-        
+
         # Los hombros son el punto donde se unen brazos y tronco
         hombros_x = 0
         hombros_y = barra_y - L_b  # Distancia desde la barra
-        
+
         # El tronco se extiende desde los hombros
         tronco_x = hombros_x + L_t * np.cos(θ_t)
         tronco_y = hombros_y + L_t * np.sin(θ_t)
-        
+
         # Las piernas se extienden desde el final del tronco en el ángulo correcto
-        # En Front Lever, el ángulo de las piernas es relativo al tronco
-        
         # Calculamos primero la dirección del tronco
         dir_tronco = np.array([np.cos(θ_t), np.sin(θ_t)])
-        
+
         # Rotamos esta dirección según el ángulo de las piernas relativo al tronco
         cos_p = np.cos(θ_p)
         sin_p = np.sin(θ_p)
         rot_matrix = np.array([[cos_p, -sin_p], [sin_p, cos_p]])
         dir_piernas = np.dot(rot_matrix, dir_tronco)
-        
+
         # Calculamos el punto final de las piernas
         piernas_x = tronco_x + L_p * dir_piernas[0]
         piernas_y = tronco_y + L_p * dir_piernas[1]
-        
+
         # Dibujar la barra
         ax.plot([-0.5, 0.5], [barra_y, barra_y], 'k-', lw=6)
-        
+
         # Dibujar puntos de agarre
         ax.scatter([-0.15, 0.15], [barra_y, barra_y], s=40, color='red')
-        
-        # Dibujar brazos (desde los puntos de agarre hasta los hombros)
-        ax.plot([-0.15, hombros_x], [barra_y, hombros_y], 'r-', lw=3)
-        ax.plot([0.15, hombros_x], [barra_y, hombros_y], 'r-', lw=3)
-        
-        # Dibujar tronco (desde los hombros hasta la cadera)
-        ax.plot([hombros_x, tronco_x], [hombros_y, tronco_y], 'b-', lw=6)
-        
-        # Dibujar piernas (desde la cadera)
-        ax.plot([tronco_x, piernas_x], [tronco_y, piernas_y], 'g-', lw=4)
-        
-        # Dibujar cabeza (en los hombros)
-        cabeza = plt.Circle((hombros_x, hombros_y), 0.1, fill=True, edgecolor='black', facecolor='lightgray')
+
+        # ---- VERSIÓN ANATÓMICA ----
+
+        # Brazo anatómico (solo un brazo visible como una sola sección continua)
+        # Para el Front Lever usamos una sola elipse alargada para el brazo
+        # Centro del brazo anatómico
+        centro_brazo_x = (0.15 + hombros_x) / 2
+        centro_brazo_y = (barra_y + hombros_y) / 2
+
+        # Longitud y dirección del brazo
+        dx_brazo = hombros_x - 0.15
+        dy_brazo = hombros_y - barra_y
+        largo_brazo = np.sqrt(dx_brazo ** 2 + dy_brazo ** 2)
+        angulo_brazo = np.arctan2(dy_brazo, dx_brazo)
+
+        # Dibujamos el brazo como una única elipse continua
+        ancho_brazo = 0.06
+        brazo_elipse = patches.Ellipse((centro_brazo_x, centro_brazo_y),
+                                       largo_brazo, ancho_brazo,
+                                       angle=np.degrees(angulo_brazo),
+                                       facecolor=color_brazo, edgecolor='black', linewidth=1)
+        ax.add_patch(brazo_elipse)
+
+        # Torso anatómico (desde los hombros hasta la cadera)
+        # Calculamos la dirección del tronco
+        dx_tronco = tronco_x - hombros_x
+        dy_tronco = tronco_y - hombros_y
+        angulo_tronco = np.arctan2(dy_tronco, dx_tronco)
+
+        # Dibujamos el tronco como una elipse alargada
+        ancho_tronco = 0.12
+        largo_tronco = L_t
+
+        # Centro de la elipse (a mitad de camino entre hombros y cadera)
+        centro_tronco_x = hombros_x + dx_tronco / 2
+        centro_tronco_y = hombros_y + dy_tronco / 2
+
+        # Dibujamos el tronco como una elipse
+        tronco_elipse = patches.Ellipse((centro_tronco_x, centro_tronco_y),
+                                        largo_tronco, ancho_tronco,
+                                        angle=np.degrees(angulo_tronco),
+                                        facecolor=color_tronco, edgecolor='black', linewidth=1)
+        ax.add_patch(tronco_elipse)
+
+        # Piernas anatómicas (desde la cadera)
+        dx_piernas = piernas_x - tronco_x
+        dy_piernas = piernas_y - tronco_y
+        angulo_piernas = np.arctan2(dy_piernas, dx_piernas)
+
+        # En caso de Tuck Front Lever o Advanced, dibujamos piernas flexionadas
+        if progresion == "Tuck Front Lever" or progresion == "Advanced Tuck Front Lever":
+            # Punto de la rodilla (punto medio)
+            rodilla_x = tronco_x + dx_piernas * 0.4
+            rodilla_y = tronco_y + dy_piernas * 0.4
+
+            # Muslos (parte superior de las piernas)
+            ancho_muslo = 0.08
+            dx_muslo = rodilla_x - tronco_x
+            dy_muslo = rodilla_y - tronco_y
+            centro_muslo_x = tronco_x + dx_muslo / 2
+            centro_muslo_y = tronco_y + dy_muslo / 2
+            muslo_elipse = patches.Ellipse((centro_muslo_x, centro_muslo_y),
+                                           np.sqrt(dx_muslo ** 2 + dy_muslo ** 2), ancho_muslo,
+                                           angle=np.degrees(np.arctan2(dy_muslo, dx_muslo)),
+                                           facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(muslo_elipse)
+
+            # Parte inferior de las piernas (gemelos)
+            ancho_gemelo = 0.06
+            dx_gemelo = piernas_x - rodilla_x
+            dy_gemelo = piernas_y - rodilla_y
+            centro_gemelo_x = rodilla_x + dx_gemelo / 2
+            centro_gemelo_y = rodilla_y + dy_gemelo / 2
+            gemelo_elipse = patches.Ellipse((centro_gemelo_x, centro_gemelo_y),
+                                            np.sqrt(dx_gemelo ** 2 + dy_gemelo ** 2), ancho_gemelo,
+                                            angle=np.degrees(np.arctan2(dy_gemelo, dx_gemelo)),
+                                            facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(gemelo_elipse)
+
+            # Rodilla (articulación)
+            rodilla = patches.Circle((rodilla_x, rodilla_y), 0.035,
+                                     facecolor=color_piel, edgecolor='black', linewidth=1)
+            ax.add_patch(rodilla)
+        else:
+            # Piernas extendidas para Full Front Lever
+            ancho_pierna = 0.09
+            largo_pierna = L_p
+            centro_pierna_x = tronco_x + dx_piernas / 2
+            centro_pierna_y = tronco_y + dy_piernas / 2
+            pierna_elipse = patches.Ellipse((centro_pierna_x, centro_pierna_y),
+                                            largo_pierna, ancho_pierna,
+                                            angle=np.degrees(angulo_piernas),
+                                            facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(pierna_elipse)
+
+        # Para Front Lever, simplificamos: la cabeza está en posición horizontal
+        # Calculamos la posición correcta para la cabeza (a la izquierda de los hombros)
+        cabeza_x = hombros_x - 0.15  # Desplazamiento a la izquierda
+        cabeza_y = hombros_y  # Misma altura que los hombros
+
+        # Dibujar el cuello como una simple línea horizontal desde los hombros hasta la cabeza
+        ancho_cuello = 0.05  # Ancho del cuello
+        largo_cuello = 0.08  # Longitud del cuello
+
+        # El cuello está perfectamente horizontal
+        cuello = patches.Ellipse(((hombros_x + cabeza_x) / 2, hombros_y),
+                                 largo_cuello, ancho_cuello,
+                                 angle=0,  # Ángulo horizontal fijo (0 grados)
+                                 facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(cuello)
+
+        # Cabeza anatómica (elipse) - ahora a la izquierda de los hombros, perfectamente horizontal
+        cabeza = patches.Ellipse((cabeza_x, cabeza_y), 0.15, 0.18,
+                                 facecolor=color_piel, edgecolor='black', linewidth=1,
+                                 angle=0)  # Ángulo horizontal fijo (0 grados)
         ax.add_patch(cabeza)
-        
-    else:  # Para L-sit y V-sit (no animados gradualmente)
-        # No usamos frac para interpolar posiciones ya que mostramos posición estática
-        
+
+        # Hombros (articulaciones)
+        hombro = patches.Circle((hombros_x, hombros_y), 0.04,
+                                facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(hombro)
+
+        # Manos (extremo del brazo)
+        mano = patches.Circle((0.15, barra_y), 0.03,
+                              facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(mano)
+
+        # Pies (extremo de la pierna)
+        pie = patches.Ellipse((piernas_x, piernas_y), 0.12, 0.05,
+                              angle=np.degrees(angulo_piernas),
+                              facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(pie)
+
+    else:  # Para L-sit y V-sit
         # Punto de apoyo en el suelo
         suelo_y = -0.5
-        
+
         # Vista lateral: solo mostramos un lado del cuerpo
-        mano_x = 0.1  # Ligeramente desplazado para vista lateral
         mano_y = suelo_y
-        
+
         # Definimos primero la posición de la cadera/base del tronco
         cadera_x = 0
         cadera_y = suelo_y + 0.3  # Elevada del suelo
-        
+
         # Definimos la posición de los hombros (punto medio del tronco)
-        # Los hombros están entre la cadera y la cabeza (mitad superior del tronco)
         hombros_x = cadera_x
         hombros_y = cadera_y + L_t * 0.5  # A mitad de camino hacia la cabeza
-        
+
         # El tronco se extiende desde la cadera hacia arriba
         tronco_x = cadera_x
         tronco_y = cadera_y + L_t  # Longitud total del tronco
-        
-        # Las piernas se extienden desde la cadera hacia adelante
+
+        # Las piernas se extienden desde la cadera
         piernas_x = cadera_x + L_p
         piernas_y = cadera_y  # Horizontales desde la cadera
-        
+
         # Para la variante Tuck, ajustamos piernas si es necesario
         if progresion == "Tuck L-sit":
             # En Tuck las piernas están ligeramente elevadas
@@ -297,78 +410,202 @@ def animate(frame, ejercicio, progresion, distances, angles, ax):
             tronco_y = cadera_y + L_t * 0.8
             piernas_x = cadera_x + L_p * 0.6
             piernas_y = cadera_y + L_p * 0.4
-        
+
         # Dibujar suelo
         ax.plot([-0.8, 0.8], [suelo_y, suelo_y], 'k-', lw=2)
-        
-        # Ajustar posición del brazo según el tipo de ejercicio
+
+        # Dibujamos el tronco anatómico primero
+        dx_tronco = tronco_x - cadera_x
+        dy_tronco = tronco_y - cadera_y
+        largo_tronco = np.sqrt(dx_tronco ** 2 + dy_tronco ** 2)
+        angulo_tronco = np.arctan2(dy_tronco, dx_tronco)
+
+        # Centro del tronco anatómico
+        centro_tronco_x = (cadera_x + tronco_x) / 2
+        centro_tronco_y = (cadera_y + tronco_y) / 2
+
+        # Dibujamos el tronco como una elipse
+        ancho_tronco = 0.12
+        tronco_elipse = patches.Ellipse((centro_tronco_x, centro_tronco_y),
+                                        largo_tronco, ancho_tronco,
+                                        angle=np.degrees(angulo_tronco),
+                                        facecolor=color_tronco, edgecolor='black', linewidth=1)
+        ax.add_patch(tronco_elipse)
+
+        # CORRECCIÓN: Para V-sit, calculamos un punto más centrado en el torso
         if progresion == "Full V-sit":
-            # Para V-sit, el brazo sale directamente del tronco a mitad de camino
-            # Calculamos un punto en el tronco para el origen del brazo
-            brazo_origen_x = cadera_x - L_t * 0.2  # Punto en el tronco inclinado
-            brazo_origen_y = cadera_y + L_t * 0.4  # A mitad del tronco aproximadamente
-            
-            # Corregir dirección del brazo para V-sit (hacia atrás, no hacia adelante)
-            mano_x_v_sit = -0.3  # Mano más atrás para el V-sit
-            
-            # Dibujar brazo desde un punto del tronco hacia el suelo (dirección corregida)
-            ax.plot([brazo_origen_x, mano_x_v_sit], [brazo_origen_y, mano_y], 'r-', lw=3)
-            # Actualizar punto de mano para dibujarlo correctamente
-            mano_x = mano_x_v_sit
+            # Calculamos la posición del hombro a lo largo del torso (centro del torso)
+            # Factor 0.5 significa que está a mitad de camino entre cadera y fin del torso
+            hombro_factor = 0.5
+
+            # Posición del hombro en el centro del torso
+            hombros_x = cadera_x + dx_tronco * hombro_factor
+            hombros_y = cadera_y + dy_tronco * hombro_factor
         else:
-            # Para L-sit y Tuck L-sit, corregir dirección (brazo hacia atrás)
-            mano_x_corregido = -0.2  # Mano detrás del hombro, no delante
-            
-            # Dibujar brazo desde los hombros hacia atrás
-            ax.plot([hombros_x, mano_x_corregido], [hombros_y, mano_y], 'r-', lw=3)
-            # Actualizar punto de mano para dibujarlo correctamente
-            mano_x = mano_x_corregido
-        
-        # Dibujar mano (punto de apoyo)
-        ax.scatter(mano_x, mano_y, s=40, color='red')
-        
-        # Dibujar tronco completo (desde la cadera hasta la cabeza)
-        ax.plot([cadera_x, tronco_x], [cadera_y, tronco_y], 'b-', lw=6)
-        
-        # Dibujar piernas (desde la cadera)
-        ax.plot([cadera_x, piernas_x], [cadera_y, piernas_y], 'g-', lw=4)
-        
-        # Dibujar cabeza (en la parte superior del tronco)
-        cabeza = plt.Circle((tronco_x, tronco_y), 0.1, fill=True, edgecolor='black', facecolor='lightgray')
+            # Para L-sit y Tuck L-sit, mantenemos el cálculo original
+            hombros_x = cadera_x
+            hombros_y = cadera_y + L_t * 0.5
+
+        # Definimos la posición de la mano (punto de apoyo) para que esté directamente debajo del hombro
+        # Esto garantiza que el brazo sea completamente vertical
+        mano_x = hombros_x
+
+        # El punto de origen del brazo es el hombro
+        brazo_origen_x = hombros_x
+        brazo_origen_y = hombros_y
+
+        # Centro del brazo anatómico (punto medio entre origen y mano)
+        centro_brazo_x = hombros_x  # Mismo X para que sea vertical
+        centro_brazo_y = (brazo_origen_y + mano_y) / 2
+
+        # Longitud y dirección del brazo
+        dx_brazo = 0  # No hay desplazamiento horizontal (brazo vertical)
+        dy_brazo = mano_y - brazo_origen_y  # Desplazamiento vertical
+        largo_brazo = abs(dy_brazo)  # Longitud absoluta
+        angulo_brazo = -np.pi / 2  # -90 grados (apuntando hacia abajo)
+
+        # Piernas anatómicas
+        dx_piernas = piernas_x - cadera_x
+        dy_piernas = piernas_y - cadera_y
+        largo_piernas = np.sqrt(dx_piernas ** 2 + dy_piernas ** 2)
+        angulo_piernas = np.arctan2(dy_piernas, dx_piernas)
+
+        # En Tuck L-sit, dibujamos piernas flexionadas
+        if progresion == "Tuck L-sit":
+            # Punto de la rodilla (punto medio)
+            rodilla_x = cadera_x + dx_piernas * 0.4
+            rodilla_y = cadera_y + dy_piernas * 0.4
+
+            # Muslos (parte superior de las piernas)
+            ancho_muslo = 0.08
+            dx_muslo = rodilla_x - cadera_x
+            dy_muslo = rodilla_y - cadera_y
+            centro_muslo_x = cadera_x + dx_muslo / 2
+            centro_muslo_y = cadera_y + dy_muslo / 2
+            largo_muslo = np.sqrt(dx_muslo ** 2 + dy_muslo ** 2)
+            muslo_elipse = patches.Ellipse((centro_muslo_x, centro_muslo_y),
+                                           largo_muslo, ancho_muslo,
+                                           angle=np.degrees(np.arctan2(dy_muslo, dx_muslo)),
+                                           facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(muslo_elipse)
+
+            # Parte inferior de las piernas (gemelos)
+            ancho_gemelo = 0.06
+            dx_gemelo = piernas_x - rodilla_x
+            dy_gemelo = piernas_y - rodilla_y
+            centro_gemelo_x = rodilla_x + dx_gemelo / 2
+            centro_gemelo_y = rodilla_y + dy_gemelo / 2
+            largo_gemelo = np.sqrt(dx_gemelo ** 2 + dy_gemelo ** 2)
+            gemelo_elipse = patches.Ellipse((centro_gemelo_x, centro_gemelo_y),
+                                            largo_gemelo, ancho_gemelo,
+                                            angle=np.degrees(np.arctan2(dy_gemelo, dx_gemelo)),
+                                            facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(gemelo_elipse)
+
+            # Rodilla (articulación)
+            rodilla = patches.Circle((rodilla_x, rodilla_y), 0.035,
+                                     facecolor=color_piel, edgecolor='black', linewidth=1)
+            ax.add_patch(rodilla)
+        else:
+            # Piernas extendidas para L-sit y V-sit
+            ancho_pierna = 0.09
+            centro_pierna_x = cadera_x + dx_piernas / 2
+            centro_pierna_y = cadera_y + dy_piernas / 2
+            pierna_elipse = patches.Ellipse((centro_pierna_x, centro_pierna_y),
+                                            largo_piernas, ancho_pierna,
+                                            angle=np.degrees(angulo_piernas),
+                                            facecolor=color_piernas, edgecolor='black', linewidth=1)
+            ax.add_patch(pierna_elipse)
+
+        # Cuello anatómico - añadiendo separación entre hombros y cabeza
+        # Calcular la dirección del cuello basado en la dirección del torso
+        dx_tronco = tronco_x - cadera_x
+        dy_tronco = tronco_y - cadera_y
+        direccion_tronco = np.array([dx_tronco, dy_tronco])
+        direccion_tronco = direccion_tronco / np.linalg.norm(direccion_tronco)  # normalizar vector
+
+        longitud_cuello = 0.08
+
+        # Posición del cuello (siguiendo la dirección del tronco)
+        cuello_x = tronco_x + direccion_tronco[0] * longitud_cuello
+        cuello_y = tronco_y + direccion_tronco[1] * longitud_cuello
+
+        # Dibujar el cuello
+        ancho_cuello = 0.05
+
+        # Encontrar ángulo para el cuello
+        angulo_cuello = np.arctan2(direccion_tronco[1], direccion_tronco[0])
+
+        # Dibujar cuello como elipse pequeña
+        cuello = patches.Ellipse((tronco_x + direccion_tronco[0] * longitud_cuello / 2,
+                                  tronco_y + direccion_tronco[1] * longitud_cuello / 2),
+                                 longitud_cuello, ancho_cuello,
+                                 angle=np.degrees(angulo_cuello),
+                                 facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(cuello)
+
+        # Cabeza anatómica (elipse) - ahora en el extremo del cuello
+        cabeza = patches.Ellipse((cuello_x, cuello_y), 0.15, 0.18,
+                                 facecolor=color_piel, edgecolor='black', linewidth=1,
+                                 angle=np.degrees(angulo_cuello))  # Misma orientación que el tronco
         ax.add_patch(cabeza)
 
-    # Mostrar los ángulos originales usados para cálculos (para verificación)
-    ax.text(-0.95, 0.9, f"Ángulos usados para cálculos:", fontsize=7)
-    ax.text(-0.95, 0.85, f"Tronco: {np.degrees(angulo_t_original):.0f}°", fontsize=7)
-    ax.text(-0.95, 0.8, f"Piernas: {np.degrees(angulo_p_original):.0f}°", fontsize=7)
-    ax.text(-0.95, 0.75, f"Brazos: {np.degrees(angulo_b_original):.0f}°", fontsize=7)
-    
-    # Configuración del gráfico
+        # IMPORTANTE: Ahora dibujamos el brazo DESPUÉS del torso para que aparezca encima
+        # Dibujamos el brazo como una elipse
+        ancho_brazo = 0.06
+        brazo_elipse = patches.Ellipse((centro_brazo_x, centro_brazo_y),
+                                       largo_brazo, ancho_brazo,
+                                       angle=np.degrees(angulo_brazo),
+                                       facecolor=color_brazo, edgecolor='black', linewidth=1)
+        ax.add_patch(brazo_elipse)
+
+        # Hombros (articulación)
+        hombro = patches.Circle((hombros_x, hombros_y), 0.04,
+                                facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(hombro)
+
+        # Cadera (articulación)
+        cadera = patches.Circle((cadera_x, cadera_y), 0.04,
+                                facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(cadera)
+
+        # Dibujar mano (punto de apoyo)
+        mano = patches.Circle((mano_x, mano_y), 0.03,
+                              facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(mano)
+
+        # Pies (extremo de la pierna)
+        pie_angulo = angulo_piernas
+        pie = patches.Ellipse((piernas_x, piernas_y), 0.12, 0.05,
+                              angle=np.degrees(pie_angulo),
+                              facecolor=color_piel, edgecolor='black', linewidth=1)
+        ax.add_patch(pie)
+
+    # ELIMINADOS: Todo el código de textos para ángulos y leyendas
+
+    # Configuración del gráfico - AMPLIAMOS LOS LÍMITES
     ax.set_aspect('equal')
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-1, 1)
+    ax.set_xlim(-1.5, 1.5)  # Límites más amplios en X
+    ax.set_ylim(-1.5, 1.5)  # Límites más amplios en Y
     ax.axis('off')
-    
-    # Leyenda
-    ax.text(-0.95, -0.95, "Azul: Tronco", color='blue', fontsize=8)
-    ax.text(-0.95, -0.9, "Verde: Piernas", color='green', fontsize=8)
-    ax.text(-0.95, -0.85, "Rojo: Brazos", color='red', fontsize=8)
-    
-    # Título de la animación
-    ax.set_title(f"{ejercicio}: {progresion}", fontsize=12)
-    
-    # Añadir explicación del ejercicio
-    if ejercicio == "V-sit" and progresion == "L-sit":
-        ax.text(-0.95, 0.6, "L-sit: ejercicio donde el cuerpo", fontsize=7)
-        ax.text(-0.95, 0.55, "forma una 'L' con el tronco vertical", fontsize=7)
-        ax.text(-0.95, 0.5, "y las piernas extendidas horizontalmente", fontsize=7)
+
+    # ELIMINADO: Título de la animación
+    # ELIMINADO: Texto de explicación del ejercicio
+
 
 # Preparación de la animación
 distances = (distancia_tronco, distancia_piernas, distancia_brazos)
 angles = (angulo_tronco_rad, angulo_piernas_rad, angulo_brazos_rad)
 frames = 60
 
-fig, ax = plt.subplots(figsize=(6, 6))
+fig, ax = plt.subplots(figsize=(8, 8))  # Mayor tamaño para mejor visualización
+plt.subplots_adjust(left=0, right=1, bottom=0, top=1)  # Eliminar márgenes
+
+# Eliminar título del gráfico y cualquier otro texto
+plt.tick_params(axis='both', which='both', bottom=False, top=False,
+                labelbottom=False, right=False, left=False, labelleft=False)
+plt.box(False)
+
 ani = animation.FuncAnimation(
     fig, animate,
     fargs=(ejercicio, progresion, distances, angles, ax),
@@ -378,11 +615,11 @@ ani = animation.FuncAnimation(
 
 # Guardar GIF en archivo temporal y mostrar
 with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp:
-    ani.save(tmp.name, writer='pillow', fps=20)
+    ani.save(tmp.name, writer='pillow', fps=20, dpi=100)  # Mayor DPI
     tmp_path = tmp.name
 
 with open(tmp_path, 'rb') as f:
     gif_bytes = f.read()
 
-st.subheader("Animación del Stickman")
+st.subheader("Animación Anatómica")
 st.image(gif_bytes, use_container_width=True)
